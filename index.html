@@ -4,31 +4,245 @@
   <meta charset="UTF-8" />
   <title>Tempo Real Stablecoin DEX</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Same styles as before to keep the UI beautiful -->
   <style>
     :root {
       --bg: radial-gradient(circle at top left, #0b1120, #020617);
       --card-bg: rgba(15, 23, 42, 0.95);
       --card-border: rgba(148, 163, 184, 0.25);
       --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.18);
       --text-main: #e5e7eb;
       --text-soft: #9ca3af;
+      --success: #22c55e;
+      --danger: #f87171;
       --radius-lg: 18px;
       --font-main: system-ui, -apple-system, sans-serif;
     }
-    body { font-family: var(--font-main); background: var(--bg); color: var(--text-main); margin: 0; padding: 20px; display: flex; justify-content: center; }
-    .app { width: 100%; max-width: 500px; background: var(--card-bg); border: 1px solid var(--card-border); padding: 20px; border-radius: var(--radius-lg); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .logo { font-size: 24px; font-weight: bold; color: var(--accent); }
-    .wallet-btn { background: var(--accent); color: #000; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-    .swap-box { background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); padding: 15px; border-radius: 12px; margin-bottom: 10px; }
-    .swap-box label { font-size: 12px; color: var(--text-soft); }
-    .swap-box input { background: transparent; border: none; color: white; font-size: 20px; width: 100%; outline: none; }
-    .token-select { background: #1e293b; color: white; border: 1px solid var(--card-border); border-radius: 8px; padding: 5px; }
-    .swap-btn { width: 100%; background: #22c55e; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-    .balance-list { margin-top: 20px; font-size: 14px; border-top: 1px solid var(--card-border); padding-top: 10px; }
-    .balance-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
-    #status { margin-top: 10px; font-size: 12px; text-align: center; color: var(--accent); }
+    
+    * { box-sizing: border-box; }
+    
+    body { 
+      font-family: var(--font-main); 
+      background: var(--bg); 
+      color: var(--text-main); 
+      margin: 0; 
+      padding: 20px; 
+      display: flex; 
+      justify-content: center; 
+      min-height: 100vh;
+    }
+    
+    .app { 
+      width: 100%; 
+      max-width: 500px; 
+      background: var(--card-bg); 
+      border: 1px solid var(--card-border); 
+      padding: 20px; 
+      border-radius: var(--radius-lg); 
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+    }
+    
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 20px; 
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .logo { 
+      font-size: 20px; 
+      font-weight: bold; 
+      color: var(--accent); 
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .wallet-section {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .wallet-btn { 
+      background: var(--accent); 
+      color: #000; 
+      border: none; 
+      padding: 10px 18px; 
+      border-radius: 20px; 
+      cursor: pointer; 
+      font-weight: bold;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    
+    .wallet-btn:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    
+    .wallet-btn.connected {
+      background: var(--success);
+    }
+    
+    .disconnect-btn {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid var(--danger);
+      padding: 10px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .disconnect-btn:hover {
+      background: rgba(248, 113, 113, 0.1);
+    }
+    
+    .network-badge {
+      font-size: 11px;
+      color: var(--text-soft);
+      padding: 4px 10px;
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+    }
+    
+    .swap-box { 
+      background: rgba(0,0,0,0.2); 
+      border: 1px solid var(--card-border); 
+      padding: 15px; 
+      border-radius: 12px; 
+      margin-bottom: 10px; 
+    }
+    
+    .swap-box label { 
+      font-size: 12px; 
+      color: var(--text-soft); 
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    .swap-input-row {
+      display: flex; 
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .swap-box input { 
+      background: transparent; 
+      border: none; 
+      color: white; 
+      font-size: 24px; 
+      flex: 1;
+      outline: none;
+      font-family: inherit;
+    }
+    
+    .token-select { 
+      background: #1e293b; 
+      color: white; 
+      border: 1px solid var(--card-border); 
+      border-radius: 8px; 
+      padding: 8px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    .swap-arrow {
+      text-align: center; 
+      margin: -5px 0; 
+      color: var(--accent);
+      font-size: 20px;
+    }
+    
+    .swap-btn { 
+      width: 100%; 
+      background: var(--success); 
+      color: white; 
+      border: none; 
+      padding: 16px; 
+      border-radius: 12px; 
+      font-size: 18px; 
+      font-weight: bold; 
+      cursor: pointer; 
+      margin-top: 10px;
+      transition: all 0.2s;
+    }
+    
+    .swap-btn:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+    
+    .swap-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    #status { 
+      margin-top: 12px; 
+      font-size: 13px; 
+      text-align: center; 
+      color: var(--text-soft);
+      min-height: 20px;
+      padding: 8px;
+      border-radius: 8px;
+    }
+    
+    #status.success {
+      color: var(--success);
+      background: rgba(34, 197, 94, 0.1);
+    }
+    
+    #status.error {
+      color: var(--danger);
+      background: rgba(248, 113, 113, 0.1);
+    }
+    
+    #status.pending {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    
+    .balance-list { 
+      margin-top: 20px; 
+      font-size: 14px; 
+      border-top: 1px solid var(--card-border); 
+      padding-top: 15px; 
+    }
+    
+    .balance-title {
+      font-size: 12px;
+      color: var(--text-soft);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+    
+    .balance-item { 
+      display: flex; 
+      justify-content: space-between; 
+      margin-bottom: 8px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+    }
+    
+    .balance-item span:first-child {
+      color: var(--accent);
+    }
+    
+    .tx-link {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    
+    .tx-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -36,34 +250,17 @@
   <div class="app">
     <div class="header">
       <div class="logo">💱 Tempo DEX</div>
-      btnConnect.addEventListener("click", () => {
-  if (signer && userAddress) {
-    disconnectWallet();
-  } else {
-    connectWallet();
-  }
-});
+      <div class="wallet-section">
+        <span class="network-badge" id="networkBadge">Not Connected</span>
+        <button class="wallet-btn" id="connectBtn">Connect Wallet</button>
+        <button class="disconnect-btn" id="disconnectBtn" style="display: none;">Disconnect</button>
+      </div>
     </div>
-function disconnectWallet() {
-  provider = undefined;
-  signer = undefined;
-  userAddress = undefined;
-  balances = {};
 
-  btnConnect.classList.remove("connected");
-  lblConnect.textContent = "Connect MetaMask";
-  elAddress.textContent = "Not connected";
-  elBalances.innerHTML = `<div style="font-size:0.75rem;color:#9ca3af;grid-column:1/-1;">Connect wallet to load balances.</div>`;
-  inFrom.value = "";
-  inTo.value = "";
-  statusBanner.className = "status-banner"; // hides it
-  setStatus("Wallet disconnected.", "success");
-  addActivity("INFO", "Wallet disconnected by user");
-}
     <div class="swap-box">
       <label>You Pay</label>
-      <div style="display:flex; align-items:center;">
-        <input type="number" id="fromAmount" placeholder="0.0">
+      <div class="swap-input-row">
+        <input type="number" id="fromAmount" placeholder="0.0" min="0" step="0.01">
         <select id="fromToken" class="token-select">
           <option value="pathUSD">pathUSD</option>
           <option value="AlphaUSD">AlphaUSD</option>
@@ -72,11 +269,11 @@ function disconnectWallet() {
       </div>
     </div>
 
-    <div style="text-align:center; margin: -5px 0; color: var(--accent);">↓</div>
+    <div class="swap-arrow">↓</div>
 
     <div class="swap-box">
       <label>You Receive (Estimated)</label>
-      <div style="display:flex; align-items:center;">
+      <div class="swap-input-row">
         <input type="number" id="toAmount" placeholder="0.0" readonly>
         <select id="toToken" class="token-select">
           <option value="pathUSD">pathUSD</option>
@@ -86,19 +283,23 @@ function disconnectWallet() {
       </div>
     </div>
 
-    <button class="swap-btn" id="swapBtn">Swap Tokens</button>
-    <div id="status">Please connect your wallet to Tempo Moderato.</div>
+    <button class="swap-btn" id="swapBtn" disabled>Connect Wallet to Swap</button>
+    <div id="status">Please connect your MetaMask wallet</div>
 
-    <div class="balance-list" id="balanceList">
-      <!-- Balances will appear here -->
+    <div class="balance-list" id="balanceList" style="display: none;">
+      <div class="balance-title">Your Balances</div>
+      <div id="balanceContent"></div>
     </div>
   </div>
 
-  <!-- LOAD ETHERS.JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 
   <script>
-    // Tempo Testnet Config
+    // Tempo Moderato Testnet Configuration
+    const TEMPO_CHAIN_ID = 42431;
+    const TEMPO_CHAIN_HEX = '0xA5BF';
+    const EXPLORER_URL = 'https://explore.tempo.xyz';
+    
     const TOKENS = {
       "pathUSD": { address: "0x20c0000000000000000000000000000000000000", decimals: 6 },
       "AlphaUSD": { address: "0x20c0000000000000000000000000000000000001", decimals: 6 },
@@ -108,87 +309,227 @@ function disconnectWallet() {
     const ERC20_ABI = [
       "function balanceOf(address owner) view returns (uint256)",
       "function decimals() view returns (uint8)",
-      "function transfer(address to, uint256 amount) returns (bool)"
+      "function transfer(address to, uint256 amount) returns (bool)",
+      "function approve(address spender, uint256 amount) returns (bool)"
     ];
 
     let provider, signer, userAddress;
+    let isConnected = false;
 
-    // 1. Connect Wallet
-    async function connect() {
-      if (!window.ethereum) return alert("MetaMask not found!");
-      
-      try {
-        provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send("eth_requestAccounts", []);
-        signer = await provider.getSigner();
-        userAddress = accounts[0];
-        
-        document.getElementById("connectBtn").innerText = userAddress.slice(0,6) + "...";
-        document.getElementById("status").innerText = "Connected to Tempo Testnet";
-        
-        loadBalances();
-      } catch (err) {
-        console.error(err);
-        document.getElementById("status").innerText = "Connection failed.";
-      }
+    // DOM Elements
+    const connectBtn = document.getElementById("connectBtn");
+    const disconnectBtn = document.getElementById("disconnectBtn");
+    const networkBadge = document.getElementById("networkBadge");
+    const swapBtn = document.getElementById("swapBtn");
+    const statusEl = document.getElementById("status");
+    const balanceList = document.getElementById("balanceList");
+    const balanceContent = document.getElementById("balanceContent");
+    const fromAmount = document.getElementById("fromAmount");
+    const toAmount = document.getElementById("toAmount");
+    const fromToken = document.getElementById("fromToken");
+    const toToken = document.getElementById("toToken");
+
+    function setStatus(msg, type = '') {
+      statusEl.textContent = msg;
+      statusEl.className = type;
     }
 
-    // 2. Load Real Balances from Blockchain
-    async function loadBalances() {
-      const list = document.getElementById("balanceList");
-      list.innerHTML = "<strong>Your Real Balances:</strong><br>";
-
-      for (const [symbol, info] of Object.entries(TOKENS)) {
-        const contract = new ethers.Contract(info.address, ERC20_ABI, provider);
-        try {
-          const rawBal = await contract.balanceOf(userAddress);
-          const formatted = ethers.formatUnits(rawBal, info.decimals);
-          list.innerHTML += `<div class="balance-item"><span>${symbol}</span> <span>${formatted}</span></div>`;
-        } catch (e) {
-          console.error(e);
+    async function switchToTempoNetwork() {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: TEMPO_CHAIN_HEX }]
+        });
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: TEMPO_CHAIN_HEX,
+              chainName: 'Tempo Moderato Testnet',
+              rpcUrls: ['https://rpc.moderato.tempo.xyz'],
+              nativeCurrency: { name: 'pathUSD', symbol: 'pUSD', decimals: 18 },
+              blockExplorerUrls: [EXPLORER_URL]
+            }]
+          });
+        } else {
+          throw switchError;
         }
       }
     }
 
-    // 3. Execution (Real Swap Transaction)
+    async function connectWallet() {
+      if (!window.ethereum) {
+        setStatus("Please install MetaMask extension", "error");
+        return;
+      }
+
+      try {
+        setStatus("Connecting...", "pending");
+        
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        
+        if (accounts.length === 0) {
+          throw new Error("No accounts found");
+        }
+
+        // Ensure we're on Tempo network
+        await switchToTempoNetwork();
+        
+        // Re-initialize provider after potential network switch
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+        userAddress = accounts[0];
+        isConnected = true;
+
+        // Update UI
+        connectBtn.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+        connectBtn.classList.add("connected");
+        disconnectBtn.style.display = "inline-block";
+        networkBadge.textContent = "Tempo 42431";
+        networkBadge.style.color = "var(--success)";
+        networkBadge.style.borderColor = "var(--success)";
+        
+        swapBtn.disabled = false;
+        swapBtn.textContent = "Swap Tokens";
+        
+        setStatus("Connected to Tempo Testnet!", "success");
+        
+        await loadBalances();
+        
+      } catch (err) {
+        console.error(err);
+        setStatus("Connection failed: " + err.message, "error");
+      }
+    }
+
+    function disconnectWallet() {
+      provider = undefined;
+      signer = undefined;
+      userAddress = undefined;
+      isConnected = false;
+
+      // Reset UI
+      connectBtn.textContent = "Connect Wallet";
+      connectBtn.classList.remove("connected");
+      disconnectBtn.style.display = "none";
+      networkBadge.textContent = "Not Connected";
+      networkBadge.style.color = "";
+      networkBadge.style.borderColor = "";
+      
+      swapBtn.disabled = true;
+      swapBtn.textContent = "Connect Wallet to Swap";
+      
+      balanceList.style.display = "none";
+      balanceContent.innerHTML = "";
+      
+      fromAmount.value = "";
+      toAmount.value = "";
+      
+      setStatus("Wallet disconnected");
+    }
+
+    async function loadBalances() {
+      if (!isConnected || !provider) return;
+
+      balanceContent.innerHTML = "";
+      
+      for (const [symbol, info] of Object.entries(TOKENS)) {
+        try {
+          const contract = new ethers.Contract(info.address, ERC20_ABI, provider);
+          const rawBal = await contract.balanceOf(userAddress);
+          const formatted = parseFloat(ethers.formatUnits(rawBal, info.decimals));
+          
+          const div = document.createElement("div");
+          div.className = "balance-item";
+          div.innerHTML = `<span>${symbol}</span><span>${formatted.toFixed(2)}</span>`;
+          balanceContent.appendChild(div);
+        } catch (e) {
+          console.error("Failed to load balance for", symbol, e);
+        }
+      }
+      
+      balanceList.style.display = "block";
+    }
+
     async function performSwap() {
-      if (!signer) return alert("Connect wallet first!");
+      if (!isConnected || !signer) {
+        setStatus("Please connect wallet first", "error");
+        return;
+      }
+
+      const amount = parseFloat(fromAmount.value);
+      if (!amount || amount <= 0) {
+        setStatus("Please enter a valid amount", "error");
+        return;
+      }
+
+      const fromSym = fromToken.value;
+      const toSym = toToken.value;
       
-      const fromSym = document.getElementById("fromToken").value;
-      const amount = document.getElementById("fromAmount").value;
-      
-      if (!amount || amount <= 0) return alert("Enter amount");
+      if (fromSym === toSym) {
+        setStatus("Cannot swap same token", "error");
+        return;
+      }
 
       const tokenInfo = TOKENS[fromSym];
       const contract = new ethers.Contract(tokenInfo.address, ERC20_ABI, signer);
-      const parsedAmount = ethers.parseUnits(amount, tokenInfo.decimals);
 
       try {
-        document.getElementById("status").innerText = "Please confirm in MetaMask...";
+        setStatus("Confirm transaction in MetaMask...", "pending");
+        swapBtn.disabled = true;
+
+        const parsedAmount = ethers.parseUnits(amount.toString(), tokenInfo.decimals);
         
-        // In this template, we send tokens to the Tempo "burn" or "system" address 
-        // to simulate the exchange interaction. 
-        // Replace this address with the actual Tempo Exchange Contract address.
-        const tx = await contract.transfer("0x0000000000000000000000000000000000000000", parsedAmount);
+        // For this template, we simulate a swap by transferring to the burn address
+        // In production, replace with actual Tempo DEX contract address
+        const tx = await contract.transfer(
+          "0x000000000000000000000000000000000000dEaD", 
+          parsedAmount
+        );
+
+        setStatus(`Transaction sent: ${tx.hash.slice(0,10)}...`, "pending");
         
-        document.getElementById("status").innerText = "Transaction pending...";
         await tx.wait();
         
-        document.getElementById("status").innerText = "Success! Tokens swapped.";
-        loadBalances();
+        const explorerLink = `<a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank" class="tx-link">View on Explorer ↗</a>`;
+        setStatus(`Swap successful! ${explorerLink}`, "success");
+        
+        // Reload balances
+        await loadBalances();
+        
+        // Clear inputs
+        fromAmount.value = "";
+        toAmount.value = "";
+        
       } catch (err) {
         console.error(err);
-        document.getElementById("status").innerText = "Transaction failed.";
+        if (err.code === 4001) {
+          setStatus("Transaction rejected by user", "error");
+        } else {
+          setStatus("Transaction failed: " + err.message, "error");
+        }
+      } finally {
+        swapBtn.disabled = false;
       }
     }
 
     // Event Listeners
-    document.getElementById("connectBtn").addEventListener("click", connect);
-    document.getElementById("swapBtn").addEventListener("click", performSwap);
-    
-    // Simple 1:1 Pricing display
-    document.getElementById("fromAmount").addEventListener("input", (e) => {
-        document.getElementById("toAmount").value = e.target.value;
+    connectBtn.addEventListener("click", connectWallet);
+    disconnectBtn.addEventListener("click", disconnectWallet);
+    swapBtn.addEventListener("click", performSwap);
+
+    // Auto-calculate received amount (1:1 for stablecoins)
+    fromAmount.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      toAmount.value = val > 0 ? (val * 0.999).toFixed(6) : "";
+    });
+
+    // Update estimate when tokens change
+    fromToken.addEventListener("change", () => {
+      const val = parseFloat(fromAmount.value);
+      toAmount.value = val > 0 ? (val * 0.999).toFixed(6) : "";
     });
   </script>
 </body>
