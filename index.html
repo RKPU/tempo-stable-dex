@@ -36,9 +36,30 @@
   <div class="app">
     <div class="header">
       <div class="logo">💱 Tempo DEX</div>
-      <button class="wallet-btn" id="connectBtn">Connect Wallet</button>
+      btnConnect.addEventListener("click", () => {
+  if (signer && userAddress) {
+    disconnectWallet();
+  } else {
+    connectWallet();
+  }
+});
     </div>
+function disconnectWallet() {
+  provider = undefined;
+  signer = undefined;
+  userAddress = undefined;
+  balances = {};
 
+  btnConnect.classList.remove("connected");
+  lblConnect.textContent = "Connect MetaMask";
+  elAddress.textContent = "Not connected";
+  elBalances.innerHTML = `<div style="font-size:0.75rem;color:#9ca3af;grid-column:1/-1;">Connect wallet to load balances.</div>`;
+  inFrom.value = "";
+  inTo.value = "";
+  statusBanner.className = "status-banner"; // hides it
+  setStatus("Wallet disconnected.", "success");
+  addActivity("INFO", "Wallet disconnected by user");
+}
     <div class="swap-box">
       <label>You Pay</label>
       <div style="display:flex; align-items:center;">
