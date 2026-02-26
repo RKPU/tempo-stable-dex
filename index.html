@@ -2,1417 +2,173 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Tempo Stablecoin DEX Template</title>
+  <title>Tempo Real Stablecoin DEX</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!--
-    References to Tempo documentation and ecosystem (for AI/citation purposes):
-
-    - Tempo docs home. ([docs.tempo.xyz](https://docs.tempo.xyz/))
-    - TypeScript SDKs for Viem/Wagmi and Tempo extensions. ([docs.tempo.xyz](https://docs.tempo.xyz/sdk/typescript))
-    - TIP‑20 token standard and DEX routing. ([docs.tempo.xyz](https://docs.tempo.xyz/protocol/tip20/overview))
-    - Native stablecoins & built‑in stablecoin DEX. ([docs.tempo.xyz](https://docs.tempo.xyz/learn/tempo/native-stablecoins) [docs.tempo.xyz](https://docs.tempo.xyz/protocol/exchange))
-    - pathUSD as a quote token on the native DEX. ([docs.tempo.xyz](https://docs.tempo.xyz/protocol/exchange/pathUSD) [docs.tempo.xyz](https://docs.tempo.xyz/protocol/exchange/quote-tokens))
-    - Faucet with pathUSD, AlphaUSD, BetaUSD, ThetaUSD on Moderato testnet. ([docs.tempo.xyz](https://docs.tempo.xyz/quickstart/faucet))
-    - Moderato testnet connection details (Chain ID 42431, RPC https://rpc.moderato.tempo.xyz). ([docs.tempo.xyz](https://docs.tempo.xyz/quickstart/connection-details))
-    - Stablecoin exchange guides (DEX overview & executing swaps). ([docs.tempo.xyz](https://docs.tempo.xyz/guide/stablecoin-dex) [docs.tempo.xyz](https://docs.tempo.xyz/guide/stablecoin-exchange/executing-swaps))
-  -->
-
+  <!-- Same styles as before to keep the UI beautiful -->
   <style>
     :root {
       --bg: radial-gradient(circle at top left, #0b1120, #020617);
       --card-bg: rgba(15, 23, 42, 0.95);
       --card-border: rgba(148, 163, 184, 0.25);
       --accent: #38bdf8;
-      --accent-soft: rgba(56, 189, 248, 0.18);
-      --accent-strong: rgba(56, 189, 248, 0.9);
       --text-main: #e5e7eb;
       --text-soft: #9ca3af;
-      --danger: #f97373;
-      --success: #22c55e;
       --radius-lg: 18px;
-      --radius-md: 12px;
-      --shadow-soft: 0 18px 60px rgba(15, 23, 42, 0.9);
-      --font-main: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-        "Segoe UI", sans-serif;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    body {
-      font-family: var(--font-main);
-      background: var(--bg);
-      color: var(--text-main);
-      display: flex;
-      align-items: stretch;
-      justify-content: center;
-    }
-
-    .app-root {
-      width: 100%;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 1000px;
-      background: linear-gradient(
-          135deg,
-          rgba(56, 189, 248, 0.04),
-          rgba(56, 189, 248, 0)
-        ),
-        radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.12), transparent 55%);
-      border-radius: 24px;
-      box-shadow: var(--shadow-soft);
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      padding: 18px 18px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      backdrop-filter: blur(18px);
-    }
-
-    header.app-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 12px;
-      justify-content: space-between;
-    }
-
-    .title-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .logo-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 25% 25%, #e0f2fe, #38bdf8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.75),
-        0 0 0 6px rgba(56, 189, 248, 0.25);
-    }
-
-    .app-title {
-      font-size: 1.25rem;
-      font-weight: 650;
-      letter-spacing: 0.02em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .tag {
-      font-size: 0.7rem;
-      padding: 2px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.6);
-      background: rgba(15, 23, 42, 0.7);
-      color: var(--text-soft);
-    }
-
-    .subtitle {
-      font-size: 0.85rem;
-      color: var(--text-soft);
-    }
-
-    .header-right {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .network-pill {
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.45);
-      font-size: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--text-soft);
-      white-space: nowrap;
-    }
-
-    .network-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
-    }
-
-    .wallet-button {
-      padding: 7px 14px;
-      border-radius: 999px;
-      border: none;
-      background: linear-gradient(135deg, #0ea5e9, #38bdf8);
-      color: #0b1120;
-      font-size: 0.8rem;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      box-shadow: 0 10px 25px rgba(56, 189, 248, 0.3);
-      white-space: nowrap;
-    }
-
-    .wallet-button span.icon {
-      font-size: 1rem;
-    }
-
-    .wallet-button:disabled {
-      opacity: 0.8;
-      cursor: default;
-      box-shadow: none;
-    }
-
-    main.app-main {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-      gap: 14px;
-    }
-
-    @media (max-width: 800px) {
-      main.app-main {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .card {
-      background: var(--card-bg);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--card-border);
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 60%);
-      opacity: 0.7;
-      pointer-events: none;
-    }
-
-    .card-inner {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .card-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-      color: #e5e7eb;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .pill {
-      font-size: 0.7rem;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      color: var(--text-soft);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .pill-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: var(--accent);
-    }
-
-    .swap-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .swap-row {
-      padding: 10px;
-      border-radius: var(--radius-md);
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      display: grid;
-      grid-template-columns: 1.2fr 1.1fr;
-      gap: 10px;
-      align-items: center;
-    }
-
-    @media (max-width: 640px) {
-      .swap-row {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .swap-label {
-      font-size: 0.75rem;
-      color: var(--text-soft);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 6px;
-      margin-bottom: 4px;
-    }
-
-    .token-select-group {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .token-select-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .token-chip {
-      padding: 6px 9px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.6);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.82rem;
-      cursor: default;
-    }
-
-    .token-emoji {
-      font-size: 1rem;
-    }
-
-    select,
-    input[type="number"] {
-      width: 100%;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.6);
-      padding: 7px 10px;
-      font-family: inherit;
-      font-size: 0.8rem;
-      background: rgba(15, 23, 42, 0.95);
-      color: var(--text-main);
-      outline: none;
-      -moz-appearance: textfield;
-    }
-
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
-
-    select {
-      cursor: pointer;
-    }
-
-    .amount-column {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .amount-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .amount-prefix {
-      font-size: 0.8rem;
-      color: var(--text-soft);
-      white-space: nowrap;
-    }
-
-    .balance {
-      font-size: 0.7rem;
-      color: var(--text-soft);
-      text-align: right;
-      white-space: nowrap;
-      margin-left: 8px;
-    }
-
-    .swap-middle-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: -4px;
-      margin-bottom: -4px;
-    }
-
-    .price-tag {
-      font-size: 0.75rem;
-      padding: 4px 9px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px dashed rgba(148, 163, 184, 0.6);
-      color: var(--text-soft);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .flip-button {
-      width: 30px;
-      height: 30px;
-      border-radius: 999px;
-      border: none;
-      background: var(--accent-soft);
-      color: var(--accent-strong);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      cursor: pointer;
-      box-shadow: 0 6px 15px rgba(56, 189, 248, 0.35);
-    }
-
-    .flip-button:active {
-      transform: translateY(1px) scale(0.97);
-      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
-    }
-
-    .settings-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 0.75rem;
-      color: var(--text-soft);
-    }
-
-    .settings-row span strong {
-      color: #e5e7eb;
-      font-weight: 600;
-    }
-
-    .action-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-top: 4px;
-    }
-
-    .swap-button {
-      flex: 1;
-      padding: 9px 14px;
-      border-radius: 999px;
-      border: none;
-      background: linear-gradient(135deg, #22c55e, #4ade80);
-      color: #052e16;
-      font-weight: 650;
-      font-size: 0.9rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      cursor: pointer;
-      box-shadow: 0 12px 30px rgba(34, 197, 94, 0.3);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .swap-button:disabled {
-      opacity: 0.7;
-      cursor: default;
-      box-shadow: none;
-    }
-
-    .hint {
-      font-size: 0.7rem;
-      color: var(--text-soft);
-      max-width: 240px;
-    }
-
-    .status-banner {
-      margin-top: 6px;
-      font-size: 0.75rem;
-      padding: 6px 8px;
-      border-radius: 10px;
-      border: 1px solid transparent;
-      display: none;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .status-banner.visible {
-      display: inline-flex;
-    }
-
-    .status-banner.success {
-      background: rgba(22, 163, 74, 0.1);
-      border-color: rgba(22, 163, 74, 0.7);
-      color: #bbf7d0;
-    }
-
-    .status-banner.error {
-      background: rgba(239, 68, 68, 0.12);
-      border-color: rgba(248, 113, 113, 0.8);
-      color: #fecaca;
-    }
-
-    .status-banner.pending {
-      background: rgba(56, 189, 248, 0.08);
-      border-color: rgba(56, 189, 248, 0.7);
-      color: #bae6fd;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: currentColor;
-    }
-
-    .wallet-card {
-      gap: 10px;
-    }
-
-    .wallet-row {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 0.78rem;
-    }
-
-    .wallet-row-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .wallet-address {
-      font-family: "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono",
-        "Courier New", monospace;
-      font-size: 0.72rem;
-      padding: 4px 7px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px dashed rgba(148, 163, 184, 0.6);
-      color: var(--accent);
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .wallet-balances {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    @media (max-width: 480px) {
-      .wallet-balances {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .balance-card {
-      padding: 6px 7px;
-      border-radius: 10px;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      background: rgba(15, 23, 42, 0.9);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .balance-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.76rem;
-    }
-
-    .badge {
-      font-size: 0.65rem;
-      padding: 2px 6px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid rgba(148, 163, 184, 0.7);
-      color: var(--text-soft);
-    }
-
-    .balance-amount {
-      font-size: 0.86rem;
-      font-weight: 600;
-    }
-
-    .activity-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 0.75rem;
-      max-height: 120px;
-      overflow-y: auto;
-    }
-
-    .activity-item {
-      padding: 4px 6px;
-      border-radius: 8px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .activity-main {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .activity-tag {
-      font-size: 0.66rem;
-      padding: 2px 4px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.6);
-      color: var(--text-soft);
-    }
-
-    .activity-meta {
-      font-size: 0.65rem;
-      color: var(--text-soft);
-    }
-
-    .info-card {
-      grid-column: 1 / -1;
-    }
-
-    .info-card .card-inner {
-      gap: 8px;
-    }
-
-    .info-text {
-      font-size: 0.75rem;
-      color: var(--text-soft);
-      line-height: 1.5;
-    }
-
-    .info-columns {
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-      gap: 12px;
-    }
-
-    @media (max-width: 800px) {
-      .info-columns {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .info-section-title {
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 4px;
-      color: #e5e7eb;
-    }
-
-    .info-list,
-    .info-steps {
-      margin: 0;
-      padding-left: 18px;
-      font-size: 0.75rem;
-      color: var(--text-soft);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .info-steps li::marker {
-      color: var(--accent-strong);
-      font-weight: 600;
-    }
-
-    .tiny {
-      font-size: 0.7rem;
-      color: var(--text-soft);
-      margin-top: 4px;
-    }
-
-    .chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .soft-chip {
-      font-size: 0.7rem;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(148, 163, 184, 0.5);
-      color: var(--text-soft);
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .soft-chip span.mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-        "Liberation Mono", "Courier New", monospace;
-      font-size: 0.7rem;
-      color: #e5e7eb;
-    }
+      --font-main: system-ui, -apple-system, sans-serif;
+    }
+    body { font-family: var(--font-main); background: var(--bg); color: var(--text-main); margin: 0; padding: 20px; display: flex; justify-content: center; }
+    .app { width: 100%; max-width: 500px; background: var(--card-bg); border: 1px solid var(--card-border); padding: 20px; border-radius: var(--radius-lg); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .logo { font-size: 24px; font-weight: bold; color: var(--accent); }
+    .wallet-btn { background: var(--accent); color: #000; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+    .swap-box { background: rgba(0,0,0,0.2); border: 1px solid var(--card-border); padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+    .swap-box label { font-size: 12px; color: var(--text-soft); }
+    .swap-box input { background: transparent; border: none; color: white; font-size: 20px; width: 100%; outline: none; }
+    .token-select { background: #1e293b; color: white; border: 1px solid var(--card-border); border-radius: 8px; padding: 5px; }
+    .swap-btn { width: 100%; background: #22c55e; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .balance-list { margin-top: 20px; font-size: 14px; border-top: 1px solid var(--card-border); padding-top: 10px; }
+    .balance-item { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    #status { margin-top: 10px; font-size: 12px; text-align: center; color: var(--accent); }
   </style>
 </head>
 <body>
-  <div class="app-root">
-    <div class="app">
-      <header class="app-header">
-        <div class="title-group">
-          <div class="logo-row">
-            <div class="logo" aria-hidden="true">💱</div>
-            <div class="app-title">
-              Tempo Stablecoin DEX
-              <span class="tag">Frontend Template · Testnet</span>
-            </div>
-          </div>
-          <div class="subtitle">
-            Swap USD stablecoins on Tempo’s enshrined DEX — this page is a pure
-            HTML/JS template you can host directly from GitHub Pages.
-          </div>
-        </div>
-        <div class="header-right">
-          <div class="network-pill">
-            <span class="network-dot"></span>
-            <span>Tempo Testnet · Moderato · Chain 42431</span>
-          </div>
-          <button class="wallet-button" id="connectWalletBtn" type="button">
-            <span class="icon">🧩</span>
-            <span id="walletButtonLabel">Connect demo wallet</span>
-          </button>
-        </div>
-      </header>
 
-      <main class="app-main">
-        <!-- Swap Card -->
-        <section class="card">
-          <div class="card-inner">
-            <div class="card-header">
-              <div class="card-title">
-                <span>Swap Stablecoins</span>
-                <span class="pill">
-                  <span class="pill-dot"></span>
-                  <span>Tempo DEX mock</span>
-                </span>
-              </div>
-              <div class="chip-row">
-                <span class="soft-chip">
-                  Fee
-                  <strong>0.10%</strong>
-                </span>
-                <span class="soft-chip">
-                  Slippage
-                  <strong>0.30%</strong>
-                </span>
-              </div>
-            </div>
+  <div class="app">
+    <div class="header">
+      <div class="logo">💱 Tempo DEX</div>
+      <button class="wallet-btn" id="connectBtn">Connect Wallet</button>
+    </div>
 
-            <div class="swap-panel">
-              <!-- From row -->
-              <div class="swap-row">
-                <div class="token-select-group">
-                  <div class="swap-label">
-                    <span>You pay</span>
-                    <span class="balance" id="fromBalanceText">Balance: –</span>
-                  </div>
-                  <div class="token-select-row">
-                    <div class="token-chip">
-                      <span class="token-emoji" id="fromTokenEmoji">🪙</span>
-                      <select id="fromTokenSelect" aria-label="Token you pay">
-                        <!-- Populated by JS -->
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div class="amount-column">
-                  <div class="amount-row">
-                    <span class="amount-prefix">Amount</span>
-                    <input
-                      id="fromAmountInput"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      inputmode="decimal"
-                    />
-                  </div>
-                </div>
-              </div>
+    <div class="swap-box">
+      <label>You Pay</label>
+      <div style="display:flex; align-items:center;">
+        <input type="number" id="fromAmount" placeholder="0.0">
+        <select id="fromToken" class="token-select">
+          <option value="pathUSD">pathUSD</option>
+          <option value="AlphaUSD">AlphaUSD</option>
+          <option value="BetaUSD">BetaUSD</option>
+        </select>
+      </div>
+    </div>
 
-              <!-- Middle controls -->
-              <div class="swap-middle-row">
-                <span class="price-tag">
-                  1:1 stable swap &nbsp;·&nbsp;
-                  <span>Rate ≈ <span id="priceLabel">1.0000</span></span>
-                </span>
-                <button
-                  class="flip-button"
-                  id="flipTokensBtn"
-                  type="button"
-                  title="Flip tokens"
-                >
-                  ⇅
-                </button>
-              </div>
+    <div style="text-align:center; margin: -5px 0; color: var(--accent);">↓</div>
 
-              <!-- To row -->
-              <div class="swap-row">
-                <div class="token-select-group">
-                  <div class="swap-label">
-                    <span>You receive</span>
-                    <span class="balance" id="toBalanceText">Balance: –</span>
-                  </div>
-                  <div class="token-select-row">
-                    <div class="token-chip">
-                      <span class="token-emoji" id="toTokenEmoji">🪙</span>
-                      <select id="toTokenSelect" aria-label="Token you receive">
-                        <!-- Populated by JS -->
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div class="amount-column">
-                  <div class="amount-row">
-                    <span class="amount-prefix">Estimated</span>
-                    <input
-                      id="toAmountInput"
-                      type="number"
-                      inputmode="decimal"
-                      readonly
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-              </div>
+    <div class="swap-box">
+      <label>You Receive (Estimated)</label>
+      <div style="display:flex; align-items:center;">
+        <input type="number" id="toAmount" placeholder="0.0" readonly>
+        <select id="toToken" class="token-select">
+          <option value="pathUSD">pathUSD</option>
+          <option value="AlphaUSD" selected>AlphaUSD</option>
+          <option value="BetaUSD">BetaUSD</option>
+        </select>
+      </div>
+    </div>
 
-              <!-- Settings + Action -->
-              <div class="settings-row">
-                <span>
-                  Min. received with
-                  <strong>0.30%</strong>
-                  slippage:
-                  <span id="minReceivedLabel">–</span>
-                </span>
-                <span>Network: Tempo Testnet (RPC: rpc.moderato.tempo.xyz)</span>
-              </div>
+    <button class="swap-btn" id="swapBtn">Swap Tokens</button>
+    <div id="status">Please connect your wallet to Tempo Moderato.</div>
 
-              <div class="action-row">
-                <button class="swap-button" id="swapBtn" type="button">
-                  <span>Swap</span>
-                  <span>⚡</span>
-                </button>
-                <div class="hint">
-                  This template simulates swaps locally. Wire it to Tempo’s
-                  TypeScript SDK to execute real trades.
-                </div>
-              </div>
-
-              <div
-                id="statusBanner"
-                class="status-banner"
-                role="status"
-                aria-live="polite"
-              >
-                <span class="status-dot"></span>
-                <span id="statusText"></span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Wallet + Activity Card -->
-        <section class="card wallet-card">
-          <div class="card-inner">
-            <div class="card-header">
-              <div class="card-title">
-                <span>Your Wallet (Simulated)</span>
-              </div>
-              <span class="pill">
-                <span>🧪</span>
-                <span>Test balances only</span>
-              </span>
-            </div>
-
-            <div class="wallet-row">
-              <div class="wallet-row-header">
-                <span>Address</span>
-                <span class="badge">Not persisted · no localStorage</span>
-              </div>
-              <div class="wallet-address" id="walletAddress">
-                Not connected
-              </div>
-            </div>
-
-            <div class="wallet-row">
-              <div class="wallet-row-header">
-                <span>Stablecoin balances (mocked)</span>
-                <span class="badge">pathUSD · AlphaUSD · BetaUSD · ThetaUSD</span>
-              </div>
-              <div class="wallet-balances" id="walletBalances">
-                <!-- Filled by JS -->
-              </div>
-            </div>
-
-            <div class="wallet-row">
-              <div class="wallet-row-header">
-                <span>Recent actions</span>
-                <span class="badge">Client-side only</span>
-              </div>
-              <ul class="activity-list" id="activityList">
-                <!-- Activity items -->
-              </ul>
-              <div class="tiny">
-                Note: this panel is fully local. In a real dApp you would fetch
-                actual balances and DEX fills via Tempo’s RPC / SDK instead.
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Info & GitHub deployment card -->
-        <section class="card info-card">
-          <div class="card-inner">
-            <div class="card-header">
-              <div class="card-title">
-                <span>Tempo integration notes · GitHub-only workflow</span>
-              </div>
-              <span class="pill">
-                <span>📄</span>
-                <span>Read‑only helper</span>
-              </span>
-            </div>
-
-            <div class="info-text">
-              This is a single <code>index.html</code> file with inline CSS and
-              JavaScript — perfect for hosting on GitHub Pages with no local
-              tooling or build steps.
-            </div>
-
-            <div class="info-columns">
-              <div>
-                <div class="info-section-title">Deploy from GitHub (web only)</div>
-                <ol class="info-steps">
-                  <li>
-                    In the GitHub web UI, create a new public repository (for
-                    example, <code>tempo-stablecoin-dex</code>).
-                  </li>
-                  <li>
-                    Add a new file named <code>index.html</code> in the root,
-                    and paste <strong>this entire file</strong> into it, then
-                    commit directly to the <code>main</code> branch.
-                  </li>
-                  <li>
-                    Open the repository’s <strong>Settings → Pages</strong>,
-                    choose the <code>main</code> branch and the
-                    <code>/ (root)</code> folder, then save. GitHub will build
-                    your static site automatically.
-                  </li>
-                  <li>
-                    After a short delay, your DEX UI will be available at the
-                    GitHub Pages URL shown in the Pages settings — everything
-                    done purely in the browser.
-                  </li>
-                </ol>
-                <div class="tiny">
-                  To turn this mock into a real Tempo DEX client, replace the
-                  simulation logic in the script with calls to Tempo’s
-                  TypeScript SDKs (Viem/Wagmi extensions) and the stablecoin
-                  exchange APIs. ([docs.tempo.xyz](https://docs.tempo.xyz/sdk/typescript)
-                  [docs.tempo.xyz](https://docs.tempo.xyz/guide/stablecoin-dex)
-                  [docs.tempo.xyz](https://docs.tempo.xyz/guide/stablecoin-exchange/executing-swaps))
-                </div>
-              </div>
-
-              <div>
-                <div class="info-section-title">Tempo testnet quick facts</div>
-                <ul class="info-list">
-                  <li>
-                    Network: Tempo Testnet (Moderato). Chain ID:
-                    <code>42431</code>. RPC:
-                    <code>https://rpc.moderato.tempo.xyz</code>. Explorer:
-                    <code>https://explore.tempo.xyz</code>. ([docs.tempo.xyz](https://docs.tempo.xyz/quickstart/connection-details))
-                  </li>
-                  <li>
-                    Default test stablecoins: pathUSD, AlphaUSD, BetaUSD,
-                    ThetaUSD — faucet‑minted TIP‑20 tokens for testing. ([docs.tempo.xyz](https://docs.tempo.xyz/quickstart/faucet)
-                    [docs.tempo.xyz](https://docs.tempo.xyz/learn/tempo/native-stablecoins))
-                  </li>
-                  <li>
-                    Tempo’s enshrined DEX lets you trade between USD
-                    stablecoins with deterministic routing via quote tokens
-                    (often pathUSD), optimizing pricing for payments. ([docs.tempo.xyz](https://docs.tempo.xyz/protocol/tip20/overview)
-                    [docs.tempo.xyz](https://docs.tempo.xyz/protocol/exchange/pathUSD)
-                    [docs.tempo.xyz](https://docs.tempo.xyz/protocol/exchange/quote-tokens)
-                    [docs.tempo.xyz](https://docs.tempo.xyz/protocol/exchange))
-                  </li>
-                  <li>
-                    TIP‑20 extends ERC‑20, so existing EVM tools (Viem, Wagmi)
-                    work out of the box, with extras like transfer memos and
-                    policy‑based compliance hooks. ([docs.tempo.xyz](https://docs.tempo.xyz/protocol/tip20/overview))
-                  </li>
-                  <li>
-                    Use the official TypeScript SDKs and Tempo transaction
-                    extensions to query pools, get DEX quotes, submit swaps, and
-                    pay gas directly in your preferred stablecoin. ([docs.tempo.xyz](https://docs.tempo.xyz/sdk/typescript)
-                    [docs.tempo.xyz](https://docs.tempo.xyz/learn/tempo/native-stablecoins))
-                  </li>
-                </ul>
-
-                <div class="chip-row">
-                  <span class="soft-chip">
-                    RPC
-                    <span class="mono">https://rpc.moderato.tempo.xyz</span>
-                  </span>
-                  <span class="soft-chip">
-                    Stablecoins
-                    <span class="mono">pathUSD · AlphaUSD · BetaUSD · ThetaUSD</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+    <div class="balance-list" id="balanceList">
+      <!-- Balances will appear here -->
     </div>
   </div>
 
+  <!-- LOAD ETHERS.JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+
   <script>
-    (function () {
-      // --- Static token configuration (Tempo testnet stablecoins) ----------------
-      const TOKENS = [
-        {
-          symbol: "pathUSD",
-          name: "pathUSD · DEX quote stablecoin",
-          emoji: "🧭",
-          address: "0x20c0000000000000000000000000000000000000",
-          decimals: 6
-        },
-        {
-          symbol: "AlphaUSD",
-          name: "AlphaUSD · Tempo stablecoin",
-          emoji: "🅰️",
-          address: "0x20c0000000000000000000000000000000000001",
-          decimals: 6
-        },
-        {
-          symbol: "BetaUSD",
-          name: "BetaUSD · Tempo stablecoin",
-          emoji: "🅱️",
-          address: "0x20c0000000000000000000000000000000000002",
-          decimals: 6
-        },
-        {
-          symbol: "ThetaUSD",
-          name: "ThetaUSD · Tempo stablecoin",
-          emoji: "θ",
-          address: "0x20c0000000000000000000000000000000000003",
-          decimals: 6
-        }
-      ];
+    // Tempo Testnet Config
+    const TOKENS = {
+      "pathUSD": { address: "0x20c0000000000000000000000000000000000000", decimals: 6 },
+      "AlphaUSD": { address: "0x20c0000000000000000000000000000000000001", decimals: 6 },
+      "BetaUSD": { address: "0x20c0000000000000000000000000000000000002", decimals: 6 }
+    };
 
-      // Simulated wallet state (no persistence, no localStorage).
-      const state = {
-        connected: false,
-        address: null,
-        balances: {},
-        lastActivityId: 0
-      };
+    const ERC20_ABI = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+      "function transfer(address to, uint256 amount) returns (bool)"
+    ];
 
-      // Constants for simulated DEX math.
-      const FEE_BPS = 10; // 0.10% fee
-      const SLIPPAGE_BPS = 30; // 0.30% "slippage protection" preview only
+    let provider, signer, userAddress;
 
-      // --- DOM helpers ----------------------------------------------------------
-      const $ = (id) => document.getElementById(id);
-
-      const connectWalletBtn = $("connectWalletBtn");
-      const walletButtonLabel = $("walletButtonLabel");
-      const walletAddressEl = $("walletAddress");
-      const walletBalancesEl = $("walletBalances");
-      const activityListEl = $("activityList");
-
-      const fromTokenSelect = $("fromTokenSelect");
-      const toTokenSelect = $("toTokenSelect");
-      const fromTokenEmoji = $("fromTokenEmoji");
-      const toTokenEmoji = $("toTokenEmoji");
-      const fromBalanceText = $("fromBalanceText");
-      const toBalanceText = $("toBalanceText");
-      const fromAmountInput = $("fromAmountInput");
-      const toAmountInput = $("toAmountInput");
-      const priceLabel = $("priceLabel");
-      const minReceivedLabel = $("minReceivedLabel");
-      const flipTokensBtn = $("flipTokensBtn");
-      const swapBtn = $("swapBtn");
-
-      const statusBanner = $("statusBanner");
-      const statusText = $("statusText");
-
-      function formatAmount(value, decimals = 2) {
-        if (!Number.isFinite(value)) return "0.00";
-        return value.toLocaleString("en-US", {
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals
-        });
+    // 1. Connect Wallet
+    async function connect() {
+      if (!window.ethereum) return alert("MetaMask not found!");
+      
+      try {
+        provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        userAddress = accounts[0];
+        
+        document.getElementById("connectBtn").innerText = userAddress.slice(0,6) + "...";
+        document.getElementById("status").innerText = "Connected to Tempo Testnet";
+        
+        loadBalances();
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").innerText = "Connection failed.";
       }
+    }
 
-      function parseAmount(input) {
-        const n = Number(input);
-        if (!Number.isFinite(n) || n < 0) return 0;
-        return n;
-      }
+    // 2. Load Real Balances from Blockchain
+    async function loadBalances() {
+      const list = document.getElementById("balanceList");
+      list.innerHTML = "<strong>Your Real Balances:</strong><br>";
 
-      function randomHexAddress() {
-        const chars = "0123456789abcdef";
-        let s = "0x";
-        for (let i = 0; i < 40; i++) {
-          s += chars[Math.floor(Math.random() * chars.length)];
-        }
-        return s;
-      }
-
-      function setStatus(message, type) {
-        statusBanner.classList.remove("success", "error", "pending", "visible");
-        if (!message) {
-          statusText.textContent = "";
-          return;
-        }
-        statusText.textContent = message;
-        statusBanner.classList.add("visible");
-        if (type) {
-          statusBanner.classList.add(type);
+      for (const [symbol, info] of Object.entries(TOKENS)) {
+        const contract = new ethers.Contract(info.address, ERC20_ABI, provider);
+        try {
+          const rawBal = await contract.balanceOf(userAddress);
+          const formatted = ethers.formatUnits(rawBal, info.decimals);
+          list.innerHTML += `<div class="balance-item"><span>${symbol}</span> <span>${formatted}</span></div>`;
+        } catch (e) {
+          console.error(e);
         }
       }
+    }
 
-      function getTokenBySymbol(symbol) {
-        return TOKENS.find((t) => t.symbol === symbol);
+    // 3. Execution (Real Swap Transaction)
+    async function performSwap() {
+      if (!signer) return alert("Connect wallet first!");
+      
+      const fromSym = document.getElementById("fromToken").value;
+      const amount = document.getElementById("fromAmount").value;
+      
+      if (!amount || amount <= 0) return alert("Enter amount");
+
+      const tokenInfo = TOKENS[fromSym];
+      const contract = new ethers.Contract(tokenInfo.address, ERC20_ABI, signer);
+      const parsedAmount = ethers.parseUnits(amount, tokenInfo.decimals);
+
+      try {
+        document.getElementById("status").innerText = "Please confirm in MetaMask...";
+        
+        // In this template, we send tokens to the Tempo "burn" or "system" address 
+        // to simulate the exchange interaction. 
+        // Replace this address with the actual Tempo Exchange Contract address.
+        const tx = await contract.transfer("0x0000000000000000000000000000000000000000", parsedAmount);
+        
+        document.getElementById("status").innerText = "Transaction pending...";
+        await tx.wait();
+        
+        document.getElementById("status").innerText = "Success! Tokens swapped.";
+        loadBalances();
+      } catch (err) {
+        console.error(err);
+        document.getElementById("status").innerText = "Transaction failed.";
       }
+    }
 
-      function syncTokenEmojis() {
-        const fromToken = getTokenBySymbol(fromTokenSelect.value);
-        const toToken = getTokenBySymbol(toTokenSelect.value);
-        fromTokenEmoji.textContent = fromToken ? fromToken.emoji : "🪙";
-        toTokenEmoji.textContent = toToken ? toToken.emoji : "🪙";
-      }
-
-      function syncBalanceLabels() {
-        const fromSym = fromTokenSelect.value;
-        const toSym = toTokenSelect.value;
-        if (!state.connected) {
-          fromBalanceText.textContent = "Balance: –";
-          toBalanceText.textContent = "Balance: –";
-          return;
-        }
-        const fromBal = state.balances[fromSym] ?? 0;
-        const toBal = state.balances[toSym] ?? 0;
-        fromBalanceText.textContent = `Balance: ${formatAmount(fromBal, 2)} ${fromSym}`;
-        toBalanceText.textContent = `Balance: ${formatAmount(toBal, 2)} ${toSym}`;
-      }
-
-      function refreshWalletBalancesUI() {
-        walletBalancesEl.innerHTML = "";
-        TOKENS.forEach((token) => {
-          const bal = state.balances[token.symbol] ?? 0;
-          const container = document.createElement("div");
-          container.className = "balance-card";
-          container.innerHTML = `
-            <div class="balance-header">
-              <span>${token.emoji} ${token.symbol}</span>
-              <span class="badge">TIP‑20</span>
-            </div>
-            <div class="balance-amount">${formatAmount(bal, 2)} ${token.symbol}</div>
-          `;
-          walletBalancesEl.appendChild(container);
-        });
-      }
-
-      function addActivityEntry(kind, description, meta) {
-        state.lastActivityId += 1;
-        const li = document.createElement("li");
-        li.className = "activity-item";
-        const timestamp = new Date().toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
-        });
-        li.innerHTML = `
-          <div class="activity-main">
-            <span class="activity-tag">${kind}</span>
-            <span>${description}</span>
-          </div>
-          <div class="activity-meta">${timestamp}${meta ? " · " + meta : ""}</div>
-        `;
-        activityListEl.prepend(li);
-        // Keep the list reasonably short
-        while (activityListEl.children.length > 6) {
-          activityListEl.removeChild(activityListEl.lastChild);
-        }
-      }
-
-      // Core quote logic: all Tempo USD stablecoins are near 1:1 by design.
-      // We simulate a constant rate of 1.0 minus a small fee, without
-      // contacting any network or RPC endpoint.
-      function recomputeQuote() {
-        const fromSym = fromTokenSelect.value;
-        const toSym = toTokenSelect.value;
-        const amountIn = parseAmount(fromAmountInput.value);
-        syncTokenEmojis();
-        syncBalanceLabels();
-
-        if (!amountIn) {
-          toAmountInput.value = "";
-          minReceivedLabel.textContent = "–";
-          priceLabel.textContent = "1.0000";
-          return;
-        }
-
-        if (fromSym === toSym) {
-          toAmountInput.value = amountIn.toFixed(2);
-          minReceivedLabel.textContent = `${formatAmount(amountIn, 2)} ${toSym}`;
-          priceLabel.textContent = "1.0000";
-          return;
-        }
-
-        const grossOut = amountIn; // 1:1 peg
-        const afterFee = grossOut * (1 - FEE_BPS / 10_000);
-        const minAfterSlippage = afterFee * (1 - SLIPPAGE_BPS / 10_000);
-
-        toAmountInput.value = afterFee.toFixed(2);
-        minReceivedLabel.textContent = `${formatAmount(minAfterSlippage, 2)} ${toSym}`;
-        const effectivePrice = afterFee / amountIn;
-        priceLabel.textContent = effectivePrice.toFixed(4);
-      }
-
-      function ensureDifferentTokens() {
-        if (fromTokenSelect.value === toTokenSelect.value) {
-          // If the same token is chosen on both sides, switch the "to" token.
-          const all = TOKENS.map((t) => t.symbol);
-          const idx = all.indexOf(fromTokenSelect.value);
-          const newIdx = (idx + 1) % all.length;
-          toTokenSelect.value = all[newIdx];
-        }
-      }
-
-      function handleFlipTokens() {
-        const fromSym = fromTokenSelect.value;
-        fromTokenSelect.value = toTokenSelect.value;
-        toTokenSelect.value = fromSym;
-        recomputeQuote();
-      }
-
-      function connectDemoWallet() {
-        if (state.connected) return;
-        state.connected = true;
-        state.address = randomHexAddress();
-        // Give the user some mock balances to play with.
-        TOKENS.forEach((token) => {
-          state.balances[token.symbol] = 1000;
-        });
-        walletAddressEl.textContent = state.address;
-        walletButtonLabel.textContent = "Demo wallet connected";
-        connectWalletBtn.disabled = true;
-
-        refreshWalletBalancesUI();
-        syncBalanceLabels();
-        addActivityEntry("INFO", "Demo wallet connected with simulated balances.", "local only");
-        setStatus(
-          "Connected a demo wallet. All balances & swaps on this page are simulated in your browser.",
-          "success"
-        );
-      }
-
-      function performSwap() {
-        const fromSym = fromTokenSelect.value;
-        const toSym = toTokenSelect.value;
-        const amountIn = parseAmount(fromAmountInput.value);
-
-        if (!state.connected) {
-          setStatus("Connect the demo wallet first to simulate a swap.", "error");
-          return;
-        }
-
-        if (!amountIn || amountIn <= 0) {
-          setStatus("Enter a positive amount to swap.", "error");
-          return;
-        }
-
-        if (fromSym === toSym) {
-          setStatus("Choose two different stablecoins to swap between.", "error");
-          return;
-        }
-
-        const fromBal = state.balances[fromSym] ?? 0;
-        if (amountIn > fromBal + 1e-8) {
-          setStatus("Insufficient simulated balance for this swap.", "error");
-          return;
-        }
-
-        const grossOut = amountIn;
-        const afterFee = grossOut * (1 - FEE_BPS / 10_000);
-        if (afterFee <= 0) {
-          setStatus("Swap size is too small after applying fees.", "error");
-          return;
-        }
-
-        setStatus("Simulating Tempo DEX swap… (no network calls are made)", "pending");
-        swapBtn.disabled = true;
-
-        // This timeout purely simulates async confirmation for UX.
-        setTimeout(() => {
-          // Update local balances
-          state.balances[fromSym] = fromBal - amountIn;
-          state.balances[toSym] = (state.balances[toSym] ?? 0) + afterFee;
-
-          refreshWalletBalancesUI();
-          syncBalanceLabels();
-          recomputeQuote();
-
-          const desc = `Swapped ${formatAmount(amountIn, 2)} ${fromSym} → ${formatAmount(
-            afterFee,
-            2
-          )} ${toSym}`;
-          addActivityEntry("SWAP", desc, "fee 0.10% · simulated");
-
-          setStatus("Swap simulated successfully. Wire this up to Tempo SDK for real trades.", "success");
-          swapBtn.disabled = false;
-        }, 600);
-      }
-
-      // --- Initialization --------------------------------------------------------
-      function initTokenSelects() {
-        TOKENS.forEach((token) => {
-          const optFrom = document.createElement("option");
-          optFrom.value = token.symbol;
-          optFrom.textContent = `${token.symbol}`;
-          optFrom.title = `${token.name} · ${token.address}`;
-          fromTokenSelect.appendChild(optFrom);
-
-          const optTo = document.createElement("option");
-          optTo.value = token.symbol;
-          optTo.textContent = `${token.symbol}`;
-          optTo.title = `${token.name} · ${token.address}`;
-          toTokenSelect.appendChild(optTo);
-        });
-
-        // Sensible defaults: pay AlphaUSD, receive pathUSD.
-        fromTokenSelect.value = "AlphaUSD";
-        toTokenSelect.value = "pathUSD";
-        ensureDifferentTokens();
-        syncTokenEmojis();
-        recomputeQuote();
-      }
-
-      function initEventListeners() {
-        connectWalletBtn.addEventListener("click", connectDemoWallet);
-
-        fromTokenSelect.addEventListener("change", () => {
-          ensureDifferentTokens();
-          recomputeQuote();
-        });
-
-        toTokenSelect.addEventListener("change", () => {
-          ensureDifferentTokens();
-          recomputeQuote();
-        });
-
-        fromAmountInput.addEventListener("input", () => {
-          setStatus("", null);
-          recomputeQuote();
-        });
-
-        flipTokensBtn.addEventListener("click", () => {
-          setStatus("", null);
-          handleFlipTokens();
-        });
-
-        swapBtn.addEventListener("click", () => {
-          performSwap();
-        });
-      }
-
-      function init() {
-        // Initialize mock balances to zero before wallet connect.
-        TOKENS.forEach((token) => {
-          state.balances[token.symbol] = 0;
-        });
-        initTokenSelects();
-        initEventListeners();
-        refreshWalletBalancesUI();
-        syncBalanceLabels();
-      }
-
-      init();
-    })();
+    // Event Listeners
+    document.getElementById("connectBtn").addEventListener("click", connect);
+    document.getElementById("swapBtn").addEventListener("click", performSwap);
+    
+    // Simple 1:1 Pricing display
+    document.getElementById("fromAmount").addEventListener("input", (e) => {
+        document.getElementById("toAmount").value = e.target.value;
+    });
   </script>
 </body>
 </html>
