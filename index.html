@@ -190,6 +190,7 @@
       min-height: 20px;
       padding: 8px;
       border-radius: 8px;
+      line-height: 1.5;
     }
     
     #status.success {
@@ -233,15 +234,6 @@
     
     .balance-item span:first-child {
       color: var(--accent);
-    }
-    
-    .tx-link {
-      color: var(--accent);
-      text-decoration: none;
-    }
-    
-    .tx-link:hover {
-      text-decoration: underline;
     }
   </style>
 </head>
@@ -298,25 +290,20 @@
     // Tempo Moderato Testnet Configuration
     const TEMPO_CHAIN_ID = 42431;
     const TEMPO_CHAIN_HEX = '0xA5BF';
-    const EXPLORER_URL = 'https://explore.tempo.xyz';
     
     const TOKENS = {
       "pathUSD": { address: "0x20c0000000000000000000000000000000000000", decimals: 6 },
       "AlphaUSD": { address: "0x20c0000000000000000000000000000000000001", decimals: 6 },
       "BetaUSD": { address: "0x20c0000000000000000000000000000000000002", decimals: 6 }
     };
-
-    const ERC20_ABI = [
-      "function balanceOf(address owner) view returns (uint256)",
-      "function decimals() view returns (uint8)",
-      "function transfer(address to, uint256 amount) returns (bool)",
-      "function approve(address spender, uint256 amount) returns (bool)"
-    ];
+    
+    const ERC20_ABI = ["function balanceOf(address owner) view returns (uint256)"];
 
     let provider, signer, userAddress;
     let isConnected = false;
+    let localBalances = {};
 
-    // DOM Elements
+    // --- DOM Elements ---
     const connectBtn = document.getElementById("connectBtn");
     const disconnectBtn = document.getElementById("disconnectBtn");
     const networkBadge = document.getElementById("networkBadge");
@@ -324,212 +311,161 @@
     const statusEl = document.getElementById("status");
     const balanceList = document.getElementById("balanceList");
     const balanceContent = document.getElementById("balanceContent");
-    const fromAmount = document.getElementById("fromAmount");
-    const toAmount = document.getElementById("toAmount");
-    const fromToken = document.getElementById("fromToken");
-    const toToken = document.getElementById("toToken");
+    const fromAmountEl = document.getElementById("fromAmount");
+    const toAmountEl = document.getElementById("toAmount");
+    const fromTokenEl = document.getElementById("fromToken");
+    const toTokenEl = document.getElementById("toToken");
 
     function setStatus(msg, type = '') {
       statusEl.textContent = msg;
       statusEl.className = type;
     }
+    
+    // --- UI Update Functions ---
+    function updateBalanceUI() {
+      balanceContent.innerHTML = "";
+      for (const [symbol, balance] of Object.entries(localBalances)) {
+        const div = document.createElement("div");
+        div.className = "balance-item";
+        div.innerHTML = `<span>${symbol}</span><span>${balance.toFixed(4)}</span>`;
+        balanceContent.appendChild(div);
+      }
+      balanceList.style.display = "block";
+    }
 
+    // --- Wallet Connection Logic ---
     async function switchToTempoNetwork() {
       try {
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: TEMPO_CHAIN_HEX }]
-        });
+        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: TEMPO_CHAIN_HEX }] });
       } catch (switchError) {
         if (switchError.code === 4902) {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: TEMPO_CHAIN_HEX,
-              chainName: 'Tempo Moderato Testnet',
-              rpcUrls: ['https://rpc.moderato.tempo.xyz'],
-              nativeCurrency: { name: 'pathUSD', symbol: 'pUSD', decimals: 18 },
-              blockExplorerUrls: [EXPLORER_URL]
-            }]
+            params: [{ chainId: TEMPO_CHAIN_HEX, chainName: 'Tempo Moderato Testnet', rpcUrls: ['https://rpc.moderato.tempo.xyz'] }]
           });
-        } else {
-          throw switchError;
-        }
+        } else { throw switchError; }
       }
     }
 
     async function connectWallet() {
-      if (!window.ethereum) {
-        setStatus("Please install MetaMask extension", "error");
-        return;
-      }
-
+      if (!window.ethereum) return setStatus("Please install MetaMask", "error");
       try {
         setStatus("Connecting...", "pending");
-        
         provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.send("eth_requestAccounts", []);
-        
-        if (accounts.length === 0) {
-          throw new Error("No accounts found");
-        }
-
-        // Ensure we're on Tempo network
         await switchToTempoNetwork();
         
-        // Re-initialize provider after potential network switch
         provider = new ethers.BrowserProvider(window.ethereum);
         signer = await provider.getSigner();
         userAddress = accounts[0];
         isConnected = true;
 
-        // Update UI
         connectBtn.textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
         connectBtn.classList.add("connected");
         disconnectBtn.style.display = "inline-block";
         networkBadge.textContent = "Tempo 42431";
         networkBadge.style.color = "var(--success)";
-        networkBadge.style.borderColor = "var(--success)";
-        
         swapBtn.disabled = false;
-        swapBtn.textContent = "Swap Tokens";
+        swapBtn.textContent = "Swap";
         
-        setStatus("Connected to Tempo Testnet!", "success");
-        
-        await loadBalances();
-        
+        setStatus("Connected! Fetching balances...", "success");
+        await fetchBalancesFromChain();
       } catch (err) {
-        console.error(err);
         setStatus("Connection failed: " + err.message, "error");
       }
     }
 
     function disconnectWallet() {
-      provider = undefined;
       signer = undefined;
       userAddress = undefined;
       isConnected = false;
+      localBalances = {};
 
-      // Reset UI
       connectBtn.textContent = "Connect Wallet";
       connectBtn.classList.remove("connected");
       disconnectBtn.style.display = "none";
       networkBadge.textContent = "Not Connected";
       networkBadge.style.color = "";
-      networkBadge.style.borderColor = "";
-      
       swapBtn.disabled = true;
       swapBtn.textContent = "Connect Wallet to Swap";
-      
       balanceList.style.display = "none";
-      balanceContent.innerHTML = "";
-      
-      fromAmount.value = "";
-      toAmount.value = "";
-      
+      fromAmountEl.value = "";
+      toAmountEl.value = "";
       setStatus("Wallet disconnected");
     }
 
-    async function loadBalances() {
-      if (!isConnected || !provider) return;
-
-      balanceContent.innerHTML = "";
-      
+    async function fetchBalancesFromChain() {
+      if (!isConnected) return;
       for (const [symbol, info] of Object.entries(TOKENS)) {
         try {
           const contract = new ethers.Contract(info.address, ERC20_ABI, provider);
           const rawBal = await contract.balanceOf(userAddress);
-          const formatted = parseFloat(ethers.formatUnits(rawBal, info.decimals));
-          
-          const div = document.createElement("div");
-          div.className = "balance-item";
-          div.innerHTML = `<span>${symbol}</span><span>${formatted.toFixed(2)}</span>`;
-          balanceContent.appendChild(div);
+          localBalances[symbol] = parseFloat(ethers.formatUnits(rawBal, info.decimals));
         } catch (e) {
-          console.error("Failed to load balance for", symbol, e);
+          console.error("Failed to load balance for", symbol);
+          localBalances[symbol] = 0;
         }
       }
-      
-      balanceList.style.display = "block";
+      updateBalanceUI();
     }
 
-    async function performSwap() {
-      if (!isConnected || !signer) {
-        setStatus("Please connect wallet first", "error");
-        return;
+    // --- SWAP LOGIC (Corrected Simulation) ---
+    function simulateSwap() {
+      if (!isConnected) return setStatus("Please connect wallet first", "error");
+
+      const amountToPay = parseFloat(fromAmountEl.value);
+      const fromSymbol = fromTokenEl.value;
+      const toSymbol = toTokenEl.value;
+
+      if (!amountToPay || amountToPay <= 0) return setStatus("Please enter a valid amount", "error");
+      if (fromSymbol === toSymbol) return setStatus("Cannot swap the same token", "error");
+      if ((localBalances[fromSymbol] || 0) < amountToPay) {
+        return setStatus(`Insufficient balance of ${fromSymbol}`, "error");
       }
 
-      const amount = parseFloat(fromAmount.value);
-      if (!amount || amount <= 0) {
-        setStatus("Please enter a valid amount", "error");
-        return;
-      }
+      setStatus("Simulating swap...", "pending");
+      swapBtn.disabled = true;
 
-      const fromSym = fromToken.value;
-      const toSym = toToken.value;
-      
-      if (fromSym === toSym) {
-        setStatus("Cannot swap same token", "error");
-        return;
-      }
+      // This timeout simulates the time a real transaction would take
+      setTimeout(() => {
+        // Calculate the received amount (assuming 1:1 for stables)
+        const amountToReceive = amountToPay * 0.999; // Simple 0.1% fee simulation
 
-      const tokenInfo = TOKENS[fromSym];
-      const contract = new ethers.Contract(tokenInfo.address, ERC20_ABI, signer);
+        // ** THIS IS THE CORE OF THE SIMULATION **
+        // We update our LOCAL copy of the balances.
+        localBalances[fromSymbol] -= amountToPay;
+        localBalances[toSymbol] = (localBalances[toSymbol] || 0) + amountToReceive;
 
-      try {
-        setStatus("Confirm transaction in MetaMask...", "pending");
-        swapBtn.disabled = true;
+        // Update the UI to show the new balances
+        updateBalanceUI();
 
-        const parsedAmount = ethers.parseUnits(amount.toString(), tokenInfo.decimals);
+        // Clear input fields
+        fromAmountEl.value = "";
+        toAmountEl.value = "";
         
-        // For this template, we simulate a swap by transferring to the burn address
-        // In production, replace with actual Tempo DEX contract address
-        const tx = await contract.transfer(
-          "0x000000000000000000000000000000000000dEaD", 
-          parsedAmount
-        );
-
-        setStatus(`Transaction sent: ${tx.hash.slice(0,10)}...`, "pending");
+        // Show success message
+        setStatus("Swap Simulated Successfully!", "success");
         
-        await tx.wait();
-        
-        const explorerLink = `<a href="${EXPLORER_URL}/tx/${tx.hash}" target="_blank" class="tx-link">View on Explorer ↗</a>`;
-        setStatus(`Swap successful! ${explorerLink}`, "success");
-        
-        // Reload balances
-        await loadBalances();
-        
-        // Clear inputs
-        fromAmount.value = "";
-        toAmount.value = "";
-        
-      } catch (err) {
-        console.error(err);
-        if (err.code === 4001) {
-          setStatus("Transaction rejected by user", "error");
-        } else {
-          setStatus("Transaction failed: " + err.message, "error");
-        }
-      } finally {
         swapBtn.disabled = false;
-      }
+        
+        // Add an instructional note for developers
+        const note = document.createElement('div');
+        note.style.fontSize = '11px';
+        note.style.marginTop = '5px';
+        note.innerHTML = `NOTE: This was a UI simulation. To make this a real on-chain swap, you must call the actual Tempo DEX contract's 'swap' function here.`;
+        statusEl.appendChild(note);
+
+      }, 2000); // 2-second delay
     }
 
-    // Event Listeners
+    // --- Event Listeners ---
     connectBtn.addEventListener("click", connectWallet);
     disconnectBtn.addEventListener("click", disconnectWallet);
-    swapBtn.addEventListener("click", performSwap);
+    swapBtn.addEventListener("click", simulateSwap);
 
-    // Auto-calculate received amount (1:1 for stablecoins)
-    fromAmount.addEventListener("input", (e) => {
+    fromAmountEl.addEventListener("input", (e) => {
       const val = parseFloat(e.target.value);
-      toAmount.value = val > 0 ? (val * 0.999).toFixed(6) : "";
-    });
-
-    // Update estimate when tokens change
-    fromToken.addEventListener("change", () => {
-      const val = parseFloat(fromAmount.value);
-      toAmount.value = val > 0 ? (val * 0.999).toFixed(6) : "";
+      toAmountEl.value = val > 0 ? (val * 0.999).toFixed(6) : "";
     });
   </script>
 </body>
